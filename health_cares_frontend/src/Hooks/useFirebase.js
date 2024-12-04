@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import { signInWithPopup, GoogleAuthProvider, getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile, FacebookAuthProvider, GithubAuthProvider } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, getAuth, onAuthStateChanged, signOut, sendEmailVerification, sendPasswordResetEmail, updateProfile, FacebookAuthProvider, GithubAuthProvider } from "firebase/auth";
 import initializeAuthentication from '../components/Login/Firebase/Firebase.init';
-
-
-initializeAuthentication();
+import apiConfig from '../apiConfig'; // Import the API configuration
+import axios from 'axios';
+initializeAuthentication();initializeAuthentication();
 
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 const githubProvider = new GithubAuthProvider();
-
 
 const useFirebase = () => {
     const [userName, setUserName] = useState('');
@@ -22,144 +21,150 @@ const useFirebase = () => {
 
     const singInUsingGoogle = () => {
         setIsLoading(true);
-        console.log('this is from inside google', isLogin)
-        return signInWithPopup(auth, googleProvider)
-    }
+        return signInWithPopup(auth, googleProvider);
+    };
 
     const singInUsingFacebook = () => {
-        
-        // setisLogin(true);
-        return signInWithPopup(auth, facebookProvider)
-    }
+        return signInWithPopup(auth, facebookProvider);
+    };
 
     const singInUsingGithub = () => {
-
-        // setisLogin(true);
-        return signInWithPopup(auth, githubProvider)
-    }
+        return signInWithPopup(auth, githubProvider);
+    };
 
     useEffect(() => {
-        const unsubscribed = onAuthStateChanged(auth, (user) => { 
-
-            //amra jodi unsubscribed function use na kori tahole eta error throw koreb
-            if (user) {
-                setUser(user);
-            } else {
-                setUser({})
+        const checkAuthState = async () => {
+            setIsLoading(true);
+            try {
+                const response = await fetch(`${apiConfig.baseURL}/auth-state`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...apiConfig.headers,
+                    },
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    setUser(data.user);
+                } else {
+                    setUser({});
+                }
+            } catch (error) {
+                setUser({});
+            } finally {
+                setIsLoading(false);
+                setisLogin(true);
             }
-            setIsLoading(false);
-            setisLogin(true);
+        };
 
-        });
-        return () => unsubscribed;
-    }, [])
-
+        checkAuthState();
+    }, []);
     const logout = () => {
         setIsLoading(true);
-        signOut(auth).then(() => {
-
-        }).catch((error) => {
-            setUser(error);
-        })
-            .finally(() => setIsLoading(false));
-    }
+        signOut(auth).finally(() => setIsLoading(false));
+    };
 
     const handleRegister = e => {
         e.preventDefault();
-
-        //prevent default ke upore na dile error er dile seta dhorar age reload hoye jabe
-        //password length validation
         if (password.length < 6) {
             setError('Password should be at least 6 characters');
             return;
         }
-        
-        //password regex test
         if (!/(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/.test(password)) {
             setError('Password should be minimum 6 characters, at least one letter and one number');
             return;
         }
         isLogin ? loginRegisterUser(mail, password) : registeruser(mail, password);
+    };
 
-    }
-
-    // register new user
-    const registeruser = (mail, password) => {
-        createUserWithEmailAndPassword(auth, mail, password)
-            .then((result) => {
-                const user = result.user;
-                verifyUserMail();
-                updateUserName();
+    const registeruser = async (mail, password) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${apiConfig.baseURL}/signup`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...apiConfig.headers,
+                },
+                body: JSON.stringify({ email: mail, password, userName }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setUser(data.user);
                 setError('');
-            })
-            .catch((error) => {
-                setError(error.message);
-            })
-    }
+            } else {
+                setError(data.message);
+            }
+        } catch (error) {
+            setError("Failed to register. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    //set user name
-    const updateUserName = () => {
-        updateProfile(auth.currentUser, {
-            displayName: userName
-        }).then(() => { })
-            .catch((error) => {
-                setError(error.message);
-            })
-    }
 
-    //login register user
-    const loginRegisterUser = (mail, password) => {
-        signInWithEmailAndPassword(auth, mail, password)
-            .then((result) => {
+    const loginRegisterUser = async (mail, password) => {
+        setIsLoading(true);
+        try {
+            const response = await axios.post(`${apiConfig.baseURL}/signin`, {
+                email: mail,
+                password
+            }, {
+                headers: apiConfig.headers
+            });
+            const data = response.data;
+            if (response.status === 200) {
+                setUser(data.user);
                 setError('');
-            })
-            .catch((error) => {
-                setError(error.message)
-            })
+            } else {
+                setError(data.message);
+            }
+        } catch (error) {
+            setError("Failed to login. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    }
-
-    //mail address verfication email
     const verifyUserMail = () => {
         sendEmailVerification(auth.currentUser)
             .then(() => {
-                setError('verificaition mail has been sent to your mail');
-            })
-    }
+                setError('Verification mail has been sent to your mail');
+            });
+    };
+
     const handleUserName = e => {
         setUserName(e.target.value);
-    }
-
+    };
 
     const handleEmail = e => {
         setMail(e.target.value);
-    }
+    };
+
     const handlePass = e => {
         setPass(e.target.value);
-    }
+    };
+
     const handleConfirmPass = e => {
         const confirmPass = e.target.value;
         if (password === confirmPass) {
             setError('');
-        }
-        else {
+        } else {
             setPass('');
             setError('Password is not matched');
         }
-    }
+    };
 
     const toggleLogin = e => {
         setisLogin(e);
-    }
+    };
 
     const handlePasswordReset = () => {
         sendPasswordResetEmail(auth, mail)
             .then(() => {
-            })
-        setError('pass reset mail is sent');
-    }
-
-
+                setError('Password reset mail is sent');
+            });
+    };
 
     return {
         singInUsingGoogle,
@@ -182,7 +187,7 @@ const useFirebase = () => {
         setIsLoading,
         isLoading,
         mail
-    }
-}
+    };
+};
 
 export default useFirebase;

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -10,12 +11,13 @@ import Box from "@mui/material/Box";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import GoogleButton from "react-google-button";
 import useAuth from "../../../../Hooks/useAuth";
 import UserProfile from "../UserProfile/UserProfile";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import apiConfig from "../../../../apiConfig";  // Import the API configuration
 
 const Register = () => {
   const {
@@ -24,13 +26,48 @@ const Register = () => {
     singInUsingFacebook,
     singInUsingGithub,
     handleConfirmPass,
-    handleRegister,
     handleUserName,
     handleEmail,
     handlePass,
     error,
+    setError,
     toggleLogin,
+    setIsLoading,
+    setUser, // Ensure setUser is imported from useAuth
   } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const history = useHistory();
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${apiConfig.baseURL}/register`, {
+        method: "POST",
+        headers: apiConfig.headers,
+        body: JSON.stringify({ email, password, username }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUser(data.user);
+        history.push("/profile");
+      } else {
+        setError(data.message);
+      }
+    } catch (error) {
+      setError("Failed to register. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Container component="main" maxWidth="xs">
@@ -67,7 +104,7 @@ const Register = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    onBlur={handleUserName}
+                    onBlur={(e) => setUsername(e.target.value)}
                     autoComplete="given-name"
                     name="firstName"
                     required
@@ -89,7 +126,7 @@ const Register = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    onBlur={handleEmail}
+                    onBlur={(e) => setEmail(e.target.value)}
                     required
                     fullWidth
                     id="email"
@@ -100,7 +137,7 @@ const Register = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    onBlur={handlePass}
+                    onBlur={(e) => setPassword(e.target.value)}
                     required
                     fullWidth
                     name="password"
@@ -112,13 +149,13 @@ const Register = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    onBlur={handleConfirmPass}
+                    onBlur={(e) => setConfirmPassword(e.target.value)}
                     required
                     fullWidth
                     name="confirmPassword"
-                    label="confirm Password"
+                    label="Confirm Password"
                     type="password"
-                    id="confirm Password"
+                    id="confirmPassword"
                     autoComplete="new-password"
                   />
                 </Grid>
@@ -155,7 +192,7 @@ const Register = () => {
                       to="/login"
                       variant="body2"
                     >
-                      Already have an account? Logini
+                      Already have an account? Login
                     </Link>
                   </Button>
                 </Grid>

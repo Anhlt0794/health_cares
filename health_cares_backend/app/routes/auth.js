@@ -1,8 +1,11 @@
 import express from 'express';
 
 const router = express.Router();
-import {signin, signup} from '../controllers/auth';
+import {authenticateToken, signin, signup} from '../controllers/auth';
 
 router.post('/signup',signup);
-router.get('/signin', signin);
+router.post('/signin', signin);
+router.get('/auth-state', authenticateToken, (req, res) => {
+    res.json({ user: req.user });
+});
 export default router;
