@@ -5,7 +5,15 @@ export default defineConfig({
     // ...vite configures
     server: {
         // vite server configs, for details see [vite doc](https://vitejs.dev/config/#server-host)
-        port: 8080
+        port: 8080,
+        // Add these debugging options
+        hmr: {
+            port: 8080
+        },
+        watch: {
+            usePolling: true,
+            interval: 100
+        }
     },
     plugins: [
         ...VitePluginNode({
@@ -47,7 +55,14 @@ export default defineConfig({
             // }
             // }
             // swc configs, see [swc doc](https://swc.rs/docs/configuration/swcrc)
-            swcOptions: {}
+            swcOptions: {},
+
+            // Add source map support
+            sourcemap: true
         })
     ],
+    // Enable source maps
+    build: {
+        sourcemap: true
+    }
 });

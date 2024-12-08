@@ -36,20 +36,46 @@ const useFirebase = () => {
         const checkAuthState = async () => {
             setIsLoading(true);
             try {
+                const token = localStorage.getItem('authToken');
+                
+                // Skip API call if no token exists
+                if (!token) {
+                    setUser({});
+                    return;
+                }
+
+                const headers = {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`  // Simplified since we know token exists
+                };
+
                 const response = await fetch(`${apiConfig.baseURL}/auth-state`, {
                     method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...apiConfig.headers,
-                    },
+                    headers
                 });
-                const data = await response.json();
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    setError("Failed to parse response. Please try again.");
+                    setUser({});
+                    return;
+                }
+
                 if (response.ok) {
                     setUser(data.user);
+                } else if (response.status === 401) {
+                    setError("Unauthorized access. Please log in again.");
+                    setUser({});
+                } else if (response.status === 403) {
+                    setError("Forbidden access. You do not have permission to view this resource.");
+                    setUser({});
                 } else {
                     setUser({});
                 }
             } catch (error) {
+                console.log(error);
                 setUser({});
             } finally {
                 setIsLoading(false);
@@ -74,11 +100,12 @@ const useFirebase = () => {
             setError('Password should be minimum 6 characters, at least one letter and one number');
             return;
         }
+        console.log(mail);
         isLogin ? loginRegisterUser(mail, password) : registeruser(mail, password);
     };
-
     const registeruser = async (mail, password) => {
         setIsLoading(true);
+        console.log(mail);
         try {
             const response = await fetch(`${apiConfig.baseURL}/signup`, {
                 method: "POST",
@@ -86,7 +113,12 @@ const useFirebase = () => {
                     "Content-Type": "application/json",
                     ...apiConfig.headers,
                 },
-                body: JSON.stringify({ email: mail, password, userName }),
+                body: JSON.stringify({
+                    username: userName,
+                    email: mail,
+                    password: password,
+                    confirmPassword: password
+                }),
             });
             const data = await response.json();
             if (response.ok) {
@@ -134,10 +166,12 @@ const useFirebase = () => {
     };
 
     const handleUserName = e => {
+        console.log(e.target.value);
         setUserName(e.target.value);
     };
 
     const handleEmail = e => {
+        console.log(e.target.value);
         setMail(e.target.value);
     };
 
@@ -150,7 +184,6 @@ const useFirebase = () => {
         if (password === confirmPass) {
             setError('');
         } else {
-            setPass('');
             setError('Password is not matched');
         }
     };

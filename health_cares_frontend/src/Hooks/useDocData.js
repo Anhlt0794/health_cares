@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
+import axios from 'axios';
+import apiConfig from '../apiConfig'; // Import the API configuration
 
 const useDocData = () => {
     const [docData, setDocData] = useState([]);
 
     useEffect(() => {
-        async function fetchData() {
-            await fetch('../../fakedata/doctordb.json')
-                .then(resp => resp.json())
-                .then(data => setDocData(data.docs));
+        async function fetchDoctors() {
+            try {
+                const response = await axios.get(`${apiConfig.baseURL}/doctors`, {
+                    headers: apiConfig.headers
+                });
+                const data = response.data;
+                if (response.status === 200) {
+                    setDocData(data);
+                }
+            } catch (error) {
+                console.error('Error fetching doctors:', error);
+            }
         }
-        fetchData();
+        fetchDoctors();
     }, []);
 
     return [docData];
